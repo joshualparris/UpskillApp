@@ -139,6 +139,129 @@ button.active {
   min-width: max-content;
 }
 
+.metrics-band,
+.action-grid,
+.decision-grid {
+  display: grid;
+  gap: 1rem;
+  padding: 0 1.5rem clamp(1.5rem, 4vw, 2rem);
+}
+
+.metrics-band {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  border: 1px solid #d5ded9;
+  border-radius: 12px;
+  background: #fff;
+  padding: 1rem;
+}
+
+.metric.ok {
+  border-color: #dbeedb;
+  background: #f5f9f5;
+}
+
+.metric.warn {
+  border-color: #f7dcc3;
+  background: #fff5ee;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.metric small {
+  color: #65746f;
+}
+
+.action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.action-list {
+  border: 1px solid #d5ded9;
+  border-radius: 10px;
+  background: #fff;
+  padding: 1rem;
+}
+
+.action-list h3 {
+  margin: 0 0 0.75rem;
+}
+
+.decision-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.decision-card {
+  border: 1px solid #d5ded9;
+  border-radius: 10px;
+  background: #fff;
+  padding: 1rem;
+}
+
+.decision-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.decision-card dt {
+  color: #4f635d;
+  font-size: 0.78rem;
+  margin-top: 0.75rem;
+}
+
+.decision-card dd {
+  margin: 0.15rem 0 0;
+  color: #17211f;
+}
+
+.table-wrap tr.selected {
+  background: #e8f4ef;
+}
+
+.due-row {
+  background: #fff7e7;
+}
+
+.status-follow-up,
+.status-waiting,
+.status-booked,
+.status-closed,
+.status-not-started {
+  border-radius: 10px;
+}
+
+.status-follow-up {
+  background: #fff2d8;
+}
+
+.status-waiting {
+  background: #e8f0ff;
+}
+
+.status-booked {
+  background: #dff4e6;
+}
+
+.status-closed {
+  background: #eef3f5;
+}
+
+.status-not-started {
+  background: #f5f7f6;
+}
+
 .dashboard-grid,
 .metrics-band,
 .action-grid,
@@ -146,6 +269,7 @@ button.active {
 .detail-grid,
 .decision-grid,
 .parent-grid,
+.requirement-scanner,
 .bridge-grid {
   display: grid;
   gap: 1rem;
@@ -553,12 +677,59 @@ textarea {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.requirement-scanner {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.requirement-scanner textarea {
+  min-height: 14rem;
+}
+
+.match-panel {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 14rem;
+  padding: 1rem;
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.match-panel h3,
+.match-panel h4 {
+  margin: 0;
+}
+
+.match-panel article {
+  padding: 0.75rem;
+  border: 1px solid #e1e9e5;
+  border-radius: 8px;
+  background: #f8fbf9;
+}
+
+.match-panel article p {
+  margin: 0.35rem 0;
+}
+
+.match-panel small {
+  color: #4f635d;
+  font-weight: 800;
+}
+
+.risk-match {
+  border-color: #f2b9a8 !important;
+  background: #fff3ef !important;
+}
+
 @media (max-width: 1100px) {
   .dashboard-grid,
   .metrics-band,
   .action-grid,
   .decision-grid,
   .parent-grid,
+  .requirement-scanner,
   .bridge-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -577,6 +748,7 @@ textarea {
   .detail-grid,
   .decision-grid,
   .parent-grid,
+  .requirement-scanner,
   .bridge-grid,
   .detail-columns {
     grid-template-columns: 1fr;

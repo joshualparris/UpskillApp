@@ -23,6 +23,7 @@ const keys = {
   training: "upskillapp.training",
   contacts: "upskillapp.contacts",
   parent: "upskillapp.parent",
+  requirementText: "upskillapp.requirementText",
 };
 
 const readStored = <T,>(key: string, fallback: T): T => {
@@ -50,6 +51,58 @@ const profileText = {
 };
 
 const messageKinds: MessageKind[] = ["Josh agency", "Kristy agency", "Josh training", "Kristy training", "Parent Pathways", "3 day follow-up"];
+
+const bridgeRules = [
+  {
+    id: "tae",
+    label: "TAE40122 / trainer requirement",
+    keywords: ["tae40122", "certificate iv in training", "training and assessment", "workplace trainer", "rto trainer"],
+    action: "Check Josh's TAE40122 pathway and ask providers about workload, delivery days, placement, recognition, and funding.",
+    trainingHints: ["tae40122", "training"],
+  },
+  {
+    id: "m365",
+    label: "Microsoft 365 admin/support",
+    keywords: ["microsoft 365", "m365", "office 365", "sharepoint", "onedrive", "teams", "exchange online"],
+    action: "Prioritise Microsoft 365 Fundamentals/admin learning and mark the role as strongly aligned with Josh's current ICT support work.",
+    trainingHints: ["microsoft", "365"],
+  },
+  {
+    id: "it-foundation",
+    label: "General ICT support foundation",
+    keywords: ["service desk", "helpdesk", "desktop support", "network", "troubleshooting", "comptia", "active directory"],
+    action: "Compare Microsoft 365 Fundamentals against CompTIA A+ and only add broader certs if local roles keep asking for them.",
+    trainingHints: ["comptia", "microsoft"],
+  },
+  {
+    id: "immunisation",
+    label: "Immunisation nursing",
+    keywords: ["immunisation", "immunization", "vaccination", "vaccine", "cold chain"],
+    action: "Show Kristy's immunisation course pathway and ask whether the course is accepted for NSW practice.",
+    trainingHints: ["immunisation"],
+  },
+  {
+    id: "gp-practice",
+    label: "GP practice / clinic nursing",
+    keywords: ["gp practice", "practice nurse", "clinic nurse", "care plan", "chronic disease", "medicare item"],
+    action: "Show GP practice nurse CPD and chronic disease/care plan training as a practical non-aged-care pathway.",
+    trainingHints: ["gp", "practice", "wound"],
+  },
+  {
+    id: "checks",
+    label: "Checks or clearances",
+    keywords: ["working with children", "wwcc", "police check", "national police", "clearance", "first aid", "cpr", "basic life support"],
+    action: "Create a blocker action to confirm cost, processing time, required documents, and whether Parent Pathways or an employer can fund it.",
+    trainingHints: ["first aid", "cpr", "basic life"],
+  },
+  {
+    id: "aged-care-risk",
+    label: "Aged care / RACF risk",
+    keywords: ["aged care", "residential aged care", "racf", "nursing home"],
+    action: "Flag as poor fit for Kristy unless the role is clearly non-aged-care and manually overridden.",
+    trainingHints: [],
+  },
+];
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -117,6 +170,7 @@ export function App() {
   const [agencyId, setAgencyId] = useState(agencies[0]?.id ?? "");
   const [courseId, setCourseId] = useState(training[0]?.id ?? "");
   const [messageKind, setMessageKind] = useState<MessageKind>("Josh agency");
+  const [requirementText, setRequirementText] = useState(() => readStored(keys.requirementText, ""));
 
   const scored = useMemo(
     () =>
@@ -137,6 +191,22 @@ export function App() {
   const dueFollowUps = contacts.filter((contact) => contact.nextFollowUp && contact.nextFollowUp <= todayIso());
   const needsVerifyCount = agencies.filter((agency) => needsVerification(agency.lastVerified)).length + training.filter((item) => needsVerification(item.lastVerified)).length;
   const planMarkdown = buildWeeklyPlan(agencies, training, contacts, parent);
+  const requirementMatches = matchRequirements(requirementText, training);
+
+  const statusClass = (status: Contact["status"]) => {
+    switch (status) {
+      case "Follow up":
+        return "status-follow-up";
+      case "Waiting":
+        return "status-waiting";
+      case "Booked":
+        return "status-booked";
+      case "Closed":
+        return "status-closed";
+      default:
+        return "status-not-started";
+    }
+  };
 
   const setAgencyList = (next: Agency[]) => {
     setAgencies(next);
@@ -300,7 +370,7 @@ export function App() {
             <thead><tr><th>Agency</th><th>Type</th><th>Josh</th><th>Kristy</th><th>Priority</th><th>Verification</th><th>Next action</th></tr></thead>
             <tbody>
               {visible.map(({ agency, score }) => (
-                <tr key={agency.id} onClick={() => setAgencyId(agency.id)}>
+                <tr key={agency.id} className={agency.id === selectedAgency?.id ? "selected" : undefined} onClick={() => setAgencyId(agency.id)}>
                   <td><strong>{agency.name}</strong><span>{score.bestReason}</span></td>
                   <td>{agency.type}</td>
                   <td>{score.joshScore}</td>
@@ -375,7 +445,7 @@ export function App() {
             <thead><tr><th>Agency</th><th>Person</th><th>Channel</th><th>Last contact</th><th>Next follow-up</th><th>Status</th><th>Notes</th></tr></thead>
             <tbody>
               {contacts.map((contact) => (
-                <tr key={contact.id}>
+                <tr key={contact.id} className={contact.nextFollowUp && contact.nextFollowUp <= todayIso() ? "due-row" : undefined}>
                   <td>{agencies.find((agency) => agency.id === contact.agencyId)?.name ?? "Unknown"}</td>
                   <td><Inline value={contact.personContacted} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, personContacted: value } : item))} /></td>
                   <td>
@@ -386,7 +456,7 @@ export function App() {
                   <td><Inline type="date" value={contact.lastContact} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, lastContact: value } : item))} /></td>
                   <td><Inline type="date" value={contact.nextFollowUp} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, nextFollowUp: value } : item))} /></td>
                   <td>
-                    <select className="inline-input" value={contact.status} onChange={(event) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, status: event.target.value as Contact["status"] } : item))}>
+                    <select className={`inline-input ${statusClass(contact.status)}`} value={contact.status} onChange={(event) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, status: event.target.value as Contact["status"] } : item))}>
                       {["Not started", "Waiting", "Follow up", "Booked", "Closed"].map((status) => <option key={status}>{status}</option>)}
                     </select>
                   </td>
@@ -408,6 +478,33 @@ export function App() {
 
       <section className="section-shell">
         <div className="section-heading"><div><p className="label">WorkApp integration layer</p><h2>Requirement bridge</h2></div></div>
+        <div className="requirement-scanner">
+          <label>
+            Paste job ad requirements or WorkApp gaps
+            <textarea
+              value={requirementText}
+              onChange={(event) => {
+                setRequirementText(event.target.value);
+                save(keys.requirementText, event.target.value);
+              }}
+              placeholder="Example: Role asks for TAE40122, Microsoft 365 admin, WWCC, police check, immunisation, or GP practice experience..."
+            />
+          </label>
+          <div className="match-panel">
+            <h3>Matched recommendations</h3>
+            {requirementMatches.length ? (
+              requirementMatches.map((match) => (
+                <article key={match.id} className={match.id === "aged-care-risk" ? "risk-match" : ""}>
+                  <h4>{match.label}</h4>
+                  <p>{match.action}</p>
+                  {match.training.length > 0 && <small>Training to check: {match.training.map((item) => item.course).join(", ")}</small>}
+                </article>
+              ))
+            ) : (
+              <p>Paste requirements above to generate pathway suggestions.</p>
+            )}
+          </div>
+        </div>
         <div className="bridge-grid">
           {[["TAE40122", "Show Josh's TAE40122 pathway and ask providers about workload, delivery days, placement, and funding."], ["Microsoft 365 admin", "Show Microsoft 365 Fundamentals/admin pathway and mark M365 roles as high alignment."], ["Immunisation", "Show Kristy's immunisation course and GP/clinic/community nursing direction."], ["WWCC or police check", "Create a blocker action to confirm cost, processing time, and whether funding can cover it."], ["Factory or warehouse", "Suggest only day-shift bridge work and check WHS/manual handling if it genuinely helps."]].map(([requirement, bridge]) => <article key={requirement}><h3>{requirement}</h3><p>{bridge}</p></article>)}
         </div>
@@ -492,4 +589,21 @@ function generateMessage(kind: MessageKind, agency?: Agency, training?: Training
   if (kind === "Kristy training") return `Hi ${provider},\n\nKristy Parris is an RN in Dubbo looking at ${courseName} to support part-time or casual non-aged-care nursing work, especially GP practice, clinic, community, school, child/family health, outpatient, or immunisation roles.\n\nCould you please confirm delivery mode, days/times, cost, subsidies, start dates, workload per week, practical requirements, and whether this pathway is recognised for NSW nursing roles?`;
   if (kind === "Parent Pathways") return `Hi Yilabara / Parent Pathways,\n\nWe are checking whether Kristy Parris may be eligible for support with return-to-work planning, confidence rebuilding, and training for family-friendly nursing work in Dubbo that is not aged care.\n\nCan Parent Pathways help with nursing CPD, immunisation training, police check, Working With Children Check, laptop, phone, transport, course materials, or other work-related costs? Can you connect us with employers as well as training providers? What is the best first step this week?`;
   return `Hi ${agencyName},\n\nI am following up on my message from three days ago about Dubbo work/training options.\n\nCould you please let me know whether there is a suitable next step, person to speak with, current vacancy, course option, or funding pathway to check?`;
+}
+
+function matchRequirements(text: string, training: TrainingOption[]) {
+  const lower = text.toLowerCase();
+  if (!lower.trim()) return [];
+
+  return bridgeRules
+    .filter((rule) => rule.keywords.some((keyword) => lower.includes(keyword)))
+    .map((rule) => ({
+      id: rule.id,
+      label: rule.label,
+      action: rule.action,
+      training: training.filter((item) => {
+        const haystack = `${item.course} ${item.provider} ${item.notes} ${item.jobsUnlocked.join(" ")}`.toLowerCase();
+        return rule.trainingHints.some((hint) => haystack.includes(hint));
+      }),
+    }));
 }
