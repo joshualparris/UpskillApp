@@ -1,7 +1,11 @@
 import {
   AlertTriangle,
   BriefcaseBusiness,
+  CalendarClock,
   CheckCircle2,
+  ClipboardList,
+  Copy,
+  Download,
   GraduationCap,
   HeartPulse,
   Plus,
@@ -47,6 +51,62 @@ const profileText = {
 
 const messageKinds: MessageKind[] = ["Josh agency", "Kristy agency", "Josh training", "Kristy training", "Parent Pathways", "3 day follow-up"];
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+const inDays = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+const buildWeeklyPlan = (
+  agencies: Agency[],
+  training: TrainingOption[],
+  contacts: Contact[],
+  parent: ParentPathwaysState,
+) => {
+  const scored = agencies.map((agency) => ({ agency, score: scoreAgency(agency) }));
+  const joshAgencies = scored.sort((a, b) => b.score.joshScore - a.score.joshScore).slice(0, 3);
+  const kristyAgencies = scored
+    .filter(({ score }) => !score.kristyHardPenalty)
+    .sort((a, b) => b.score.kristyScore - a.score.kristyScore)
+    .slice(0, 3);
+  const joshTraining = training
+    .filter((item) => item.person === "josh" || item.person === "both")
+    .sort((a, b) => trainingScore(b) - trainingScore(a))
+    .slice(0, 3);
+  const kristyTraining = training
+    .filter((item) => item.person === "kristy" || item.person === "both")
+    .sort((a, b) => trainingScore(b) - trainingScore(a))
+    .slice(0, 3);
+  const due = contacts.filter((contact) => contact.nextFollowUp && contact.nextFollowUp <= todayIso());
+
+  return `# UpskillApp Weekly Pathway Plan
+
+Generated: ${todayIso()}
+
+## Josh next 3 actions
+${joshAgencies.map(({ agency }, index) => `${index + 1}. ${agency.nextAction} (${agency.name})`).join("\n")}
+
+## Kristy next 3 actions
+${kristyAgencies.map(({ agency }, index) => `${index + 1}. ${agency.nextAction} (${agency.name})`).join("\n")}
+
+## Josh training to check
+${joshTraining.map((item, index) => `${index + 1}. ${item.course} - ${item.provider} - ${item.priority}`).join("\n")}
+
+## Kristy training to check
+${kristyTraining.map((item, index) => `${index + 1}. ${item.course} - ${item.provider} - ${item.priority}`).join("\n")}
+
+## Follow-ups due
+${due.length ? due.map((contact) => `- ${contact.nextFollowUp}: ${contact.notes || "Follow up required"}`).join("\n") : "- No dated follow-ups due today."}
+
+## Parent Pathways notes
+- Eligibility: ${parent.eligibility}
+- Funding: ${parent.fundingAvailable}
+- Next appointment: ${parent.nextAppointment || "Not set"}
+`;
+};
+
 export function App() {
   const [agencies, setAgencies] = useState<Agency[]>(() => readStored(keys.agencies, agenciesSeed));
   const [training, setTraining] = useState<TrainingOption[]>(() => readStored(keys.training, trainingSeed));
@@ -74,6 +134,9 @@ export function App() {
   const selectedAgency = agencies.find((item) => item.id === agencyId) ?? agencies[0];
   const selectedCourse = training.find((item) => item.id === courseId) ?? training[0];
   const action = person === "josh" ? topJoshAgencies[0]?.agency.nextAction : topKristyAgencies[0]?.agency.nextAction;
+  const dueFollowUps = contacts.filter((contact) => contact.nextFollowUp && contact.nextFollowUp <= todayIso());
+  const needsVerifyCount = agencies.filter((agency) => needsVerification(agency.lastVerified)).length + training.filter((item) => needsVerification(item.lastVerified)).length;
+  const planMarkdown = buildWeeklyPlan(agencies, training, contacts, parent);
 
   const setAgencyList = (next: Agency[]) => {
     setAgencies(next);
@@ -97,6 +160,20 @@ export function App() {
     setTrainingList(trainingSeed);
     setContactList(contactsSeed);
     setParentState(parentPathwaysSeed);
+  };
+
+  const copyWeeklyPlan = async () => {
+    await navigator.clipboard.writeText(planMarkdown);
+  };
+
+  const downloadWeeklyPlan = () => {
+    const blob = new Blob([planMarkdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `upskillapp-plan-${todayIso()}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const addAgency = () => {
@@ -188,6 +265,28 @@ export function App() {
         <Summary icon={<GraduationCap size={20} />} title="Funding" items={["Ask Yilabara about Parent Pathways eligibility and individual fund rules.", "Check Smart and Skilled and Fee-Free TAFE before committing.", "Bring course quotes, check costs, and dates to appointments."]} />
       </section>
 
+      <section className="metrics-band">
+        <Metric icon={<ClipboardList size={18} />} label="Open agencies" value={agencies.length.toString()} />
+        <Metric icon={<GraduationCap size={18} />} label="Training options" value={training.length.toString()} />
+        <Metric icon={<CalendarClock size={18} />} label="Follow-ups due" value={dueFollowUps.length.toString()} tone={dueFollowUps.length ? "warn" : "ok"} />
+        <Metric icon={<AlertTriangle size={18} />} label="Needs verification" value={needsVerifyCount.toString()} tone={needsVerifyCount ? "warn" : "ok"} />
+      </section>
+
+      <section className="section-shell">
+        <div className="section-heading">
+          <div><p className="label">Weekly pathway report</p><h2>Next 3 actions</h2></div>
+          <div className="toolbar">
+            <button onClick={copyWeeklyPlan}><Copy size={16} /> Copy Markdown</button>
+            <button onClick={downloadWeeklyPlan}><Download size={16} /> Download</button>
+          </div>
+        </div>
+        <div className="action-grid">
+          <ActionList title="Josh" items={topJoshAgencies.slice(0, 3).map(({ agency }) => agency.nextAction)} />
+          <ActionList title="Kristy" items={topKristyAgencies.slice(0, 3).map(({ agency }) => agency.nextAction)} />
+          <ActionList title="Due follow-ups" items={dueFollowUps.length ? dueFollowUps.map((contact) => contact.notes || `Follow up ${agencies.find((agency) => agency.id === contact.agencyId)?.name ?? "contact"}`) : ["No dated follow-ups due today."]} />
+        </div>
+      </section>
+
       <section className="section-shell">
         <div className="section-heading">
           <div><p className="label">Agency finder and scoring</p><h2>Agency CRM</h2></div>
@@ -230,6 +329,30 @@ export function App() {
       </section>
 
       <section className="section-shell">
+        <div className="section-heading"><div><p className="label">Decision helper</p><h2>Compare effort and value</h2></div></div>
+        <div className="decision-grid">
+          {training
+            .slice()
+            .sort((a, b) => trainingScore(b) - trainingScore(a))
+            .slice(0, 6)
+            .map((item) => (
+              <article key={item.id} className="decision-card">
+                <div className="decision-head">
+                  <h3>{item.course}</h3>
+                  <strong>{trainingScore(item)}</strong>
+                </div>
+                <dl>
+                  <div><dt>Income bridge</dt><dd>{item.employabilityImpact >= 8 ? "Strong" : item.employabilityImpact >= 6 ? "Moderate" : "Low"}</dd></div>
+                  <div><dt>Family load</dt><dd>{item.stressFit >= 8 ? "Low" : item.stressFit >= 6 ? "Manageable" : "Watch carefully"}</dd></div>
+                  <div><dt>Cost risk</dt><dd>{item.costFit >= 7 ? "Lower" : item.costFit >= 5 ? "Check first" : "High without funding"}</dd></div>
+                  <div><dt>Long-term value</dt><dd>{item.longTermValue >= 8 ? "High" : item.longTermValue >= 6 ? "Useful" : "Limited"}</dd></div>
+                </dl>
+              </article>
+            ))}
+        </div>
+      </section>
+
+      <section className="section-shell">
         <div className="section-heading"><div><p className="label">Support and funding</p><h2>Parent Pathways / Yilabara</h2></div></div>
         <div className="parent-grid">
           <TextBlock label="Eligibility" value={parent.eligibility} onChange={(value) => setParentState({ ...parent, eligibility: value })} />
@@ -245,7 +368,7 @@ export function App() {
       <section className="section-shell">
         <div className="section-heading">
           <div><p className="label">Follow-up system</p><h2>Contact tracker</h2></div>
-          <button onClick={() => setContactList([{ id: `contact-${Date.now()}`, agencyId: selectedAgency?.id ?? agencies[0].id, personContacted: "", channel: "Phone", lastContact: new Date().toISOString().slice(0, 10), nextFollowUp: "", notes: "", status: "Waiting" }, ...contacts])}><Plus size={16} /> Add follow-up</button>
+          <button onClick={() => setContactList([{ id: `contact-${Date.now()}`, agencyId: selectedAgency?.id ?? agencies[0].id, personContacted: "", channel: "Phone", lastContact: todayIso(), nextFollowUp: inDays(3), notes: "", status: "Waiting" }, ...contacts])}><Plus size={16} /> Add follow-up</button>
         </div>
         <div className="table-wrap">
           <table>
@@ -255,10 +378,18 @@ export function App() {
                 <tr key={contact.id}>
                   <td>{agencies.find((agency) => agency.id === contact.agencyId)?.name ?? "Unknown"}</td>
                   <td><Inline value={contact.personContacted} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, personContacted: value } : item))} /></td>
-                  <td>{contact.channel}</td>
+                  <td>
+                    <select className="inline-input" value={contact.channel} onChange={(event) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, channel: event.target.value as Contact["channel"] } : item))}>
+                      {["Phone", "Email", "Web form", "In person"].map((channel) => <option key={channel}>{channel}</option>)}
+                    </select>
+                  </td>
                   <td><Inline type="date" value={contact.lastContact} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, lastContact: value } : item))} /></td>
                   <td><Inline type="date" value={contact.nextFollowUp} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, nextFollowUp: value } : item))} /></td>
-                  <td>{contact.status}</td>
+                  <td>
+                    <select className="inline-input" value={contact.status} onChange={(event) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, status: event.target.value as Contact["status"] } : item))}>
+                      {["Not started", "Waiting", "Follow up", "Booked", "Closed"].map((status) => <option key={status}>{status}</option>)}
+                    </select>
+                  </td>
                   <td><Inline value={contact.notes} onChange={(value) => setContactList(contacts.map((item) => item.id === contact.id ? { ...item, notes: value } : item))} /></td>
                 </tr>
               ))}
@@ -287,6 +418,14 @@ export function App() {
 
 function Summary({ icon, title, items }: { icon: React.ReactNode; title: string; items: string[] }) {
   return <article className="summary-panel"><div className="panel-title">{icon}<h2>{title}</h2></div><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></article>;
+}
+
+function Metric({ icon, label, value, tone = "neutral" }: { icon: React.ReactNode; label: string; value: string; tone?: "neutral" | "ok" | "warn" }) {
+  return <article className={`metric ${tone}`}><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></article>;
+}
+
+function ActionList({ title, items }: { title: string; items: string[] }) {
+  return <article className="action-list"><h3>{title}</h3><ol>{items.map((item) => <li key={item}>{item}</li>)}</ol></article>;
 }
 
 function Priority({ priority }: { priority: string }) {
@@ -332,7 +471,7 @@ function PathwayList({ title, items, onSelect }: { title: string; items: Trainin
 
 function CourseDetail({ course, training, saveTraining }: { course: TrainingOption; training: TrainingOption[]; saveTraining: (training: TrainingOption[]) => void }) {
   const patch = (updates: Partial<TrainingOption>) => saveTraining(training.map((item) => item.id === course.id ? { ...item, ...updates } : item));
-  return <article className="detail-card"><div className="panel-title"><GraduationCap size={20} /><h3>{course.course}</h3><Priority priority={course.priority} /></div><div className="form-grid"><label>Course<input value={course.course} onChange={(event) => patch({ course: event.target.value })} /></label><label>Provider<input value={course.provider} onChange={(event) => patch({ provider: event.target.value })} /></label><label>Cost<input value={course.cost} onChange={(event) => patch({ cost: event.target.value })} /></label><label>Duration<input value={course.duration} onChange={(event) => patch({ duration: event.target.value })} /></label></div><div className="detail-columns"><div><h4>Why it helps</h4><p>{course.notes}</p><h4>Jobs it unlocks</h4><p>{course.jobsUnlocked.join(", ") || "Add target jobs."}</p></div><div><h4>Questions to ask</h4><ul>{course.questions.map((question) => <li key={question}>{question}</li>)}</ul></div></div></article>;
+  return <article className="detail-card"><div className="panel-title"><GraduationCap size={20} /><h3>{course.course}</h3><Priority priority={course.priority} /></div><div className="form-grid"><label>Course<input value={course.course} onChange={(event) => patch({ course: event.target.value })} /></label><label>Provider<input value={course.provider} onChange={(event) => patch({ provider: event.target.value })} /></label><label>Cost<input value={course.cost} onChange={(event) => patch({ cost: event.target.value })} /></label><label>Duration<input value={course.duration} onChange={(event) => patch({ duration: event.target.value })} /></label><label>Status<select value={course.status} onChange={(event) => patch({ status: event.target.value as TrainingOption["status"] })}>{["Idea", "Checking", "Applied", "In progress", "Completed", "Deferred"].map((status) => <option key={status}>{status}</option>)}</select></label><label>Priority<select value={course.priority} onChange={(event) => patch({ priority: event.target.value as TrainingOption["priority"] })}>{["Contact today", "Contact this week", "Maybe later", "Avoid"].map((priority) => <option key={priority}>{priority}</option>)}</select></label><label>Delivery<select value={course.deliveryMode} onChange={(event) => patch({ deliveryMode: event.target.value as TrainingOption["deliveryMode"] })}>{["online", "in person", "blended", "check"].map((mode) => <option key={mode}>{mode}</option>)}</select></label><label>Last verified<input type="date" value={course.lastVerified} onChange={(event) => patch({ lastVerified: event.target.value })} /></label></div><div className="detail-columns"><div><h4>Why it helps</h4><p>{course.notes}</p><h4>Jobs it unlocks</h4><p>{course.jobsUnlocked.join(", ") || "Add target jobs."}</p></div><div><h4>Questions to ask</h4><ul>{course.questions.map((question) => <li key={question}>{question}</li>)}</ul></div></div></article>;
 }
 
 function TextBlock({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

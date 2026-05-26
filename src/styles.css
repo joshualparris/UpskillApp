@@ -140,8 +140,11 @@ button.active {
 }
 
 .dashboard-grid,
+.metrics-band,
+.action-grid,
 .pathway-columns,
 .detail-grid,
+.decision-grid,
 .parent-grid,
 .bridge-grid {
   display: grid;
@@ -153,12 +156,81 @@ button.active {
   padding: 1.5rem clamp(1rem, 4vw, 4rem);
 }
 
+.metrics-band {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 clamp(1rem, 4vw, 4rem) 1.5rem;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.25rem;
+  padding: 0.85rem;
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.metric > span {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 7px;
+  background: #e5efea;
+  color: #0f5e62;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.metric small {
+  color: #5a6e68;
+  font-weight: 800;
+}
+
+.metric.warn > span {
+  background: #ffe4dc;
+  color: #8a2a16;
+}
+
+.metric.ok > span {
+  background: #dff2df;
+  color: #215b26;
+}
+
 .summary-panel,
 .detail-card,
 .pathway-list,
+.action-list,
+.decision-card,
 .checklist,
 .bridge-grid article {
   padding: 1rem;
+}
+
+.action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.action-list,
+.decision-card {
+  border: 1px solid #d5ded9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.action-list h3 {
+  margin: 0 0 0.65rem;
+}
+
+.action-list ol {
+  margin: 0;
+  padding-left: 1.2rem;
 }
 
 .panel-title {
@@ -363,6 +435,51 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.decision-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.decision-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.decision-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.decision-head strong {
+  color: #0f5e62;
+  font-size: 1.35rem;
+}
+
+.decision-card dl {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+}
+
+.decision-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #edf2ef;
+  padding-top: 0.45rem;
+}
+
+.decision-card dt {
+  color: #5a6e68;
+  font-weight: 800;
+}
+
+.decision-card dd {
+  margin: 0;
+  text-align: right;
+}
+
 .pathway-list {
   display: grid;
   gap: 0.55rem;
@@ -438,6 +555,9 @@ textarea {
 
 @media (max-width: 1100px) {
   .dashboard-grid,
+  .metrics-band,
+  .action-grid,
+  .decision-grid,
   .parent-grid,
   .bridge-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -451,8 +571,11 @@ textarea {
 @media (max-width: 760px) {
   .hero,
   .dashboard-grid,
+  .metrics-band,
+  .action-grid,
   .pathway-columns,
   .detail-grid,
+  .decision-grid,
   .parent-grid,
   .bridge-grid,
   .detail-columns {
