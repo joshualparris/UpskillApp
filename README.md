@@ -25,9 +25,24 @@ Then open the local Vite URL shown in the terminal.
 npm run build
 ```
 
+## Backend (Vercel serverless)
+
+- `GET /api/jobs` — Adzuna job search proxy (requires `ADZUNA_APP_ID` and `ADZUNA_API_KEY` in Vercel env)
+- `GET/PUT /api/state` — optional cloud sync when `BLOB_READ_WRITE_TOKEN` is set
+
+Copy `.env.example` to `.env.local` for local API testing, then run:
+
+```bash
+npm run dev:full
+```
+
 ## Deploy
 
-Vercel can deploy this repository directly with the default Vite settings.
+```bash
+npm run deploy:vercel
+```
+
+Vercel deploys the Vite frontend and `/api` routes together.
 
 For GitHub Pages:
 
