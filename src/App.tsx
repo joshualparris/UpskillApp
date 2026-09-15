@@ -10,6 +10,7 @@ import { ParentPathwaysPanel } from "./components/ParentPathwaysPanel";
 import { ProfileSummary } from "./components/ProfileSummary";
 import { RequirementBridge } from "./components/RequirementBridge";
 import { SummaryCards } from "./components/SummaryCards";
+import { TarongaPathwayPanel } from "./components/TarongaPathwayPanel";
 import { TodayMode } from "./components/TodayMode";
 import { TrainingPlanner } from "./components/TrainingPlanner";
 import { ConfirmDialog } from "./components/shared";
@@ -120,6 +121,8 @@ export function App() {
         onDelete={(id) => setConfirmDelete({ type: "course", id })}
         showArchived={state.settings.showArchived}
       />
+
+      <TarongaPathwayPanel />
 
       <JobsPanel person={person} onApplyToBridge={app.setRequirementText} />
 
