@@ -1,7 +1,8 @@
 # Podcast Integration TODO
 
 **Decision:** Add — strong fit.  
-**Status:** ✅ Core one-click podcast bank added 13 September 2026.
+**Status:** ✅ Core one-click podcast bank added 13 September 2026.  
+**Deployment QA:** ✅ GitHub Pages production build verified again 15 September 2026.
 **Topic bank:** career change, training pathways, interviews, return-to-work and professional development.
 
 ## TODO
@@ -16,3 +17,10 @@
 
 ## Implementation
 Loaded from the shared JoshHub catalogue through `podcast-dock-universal.js` with `data-bank="career"`. The dock collapses while typing into forms.
+
+## Deployment incident and fix
+On 13 September 2026 the GitHub Pages URL could show a blank white app while the podcast dock still rendered. Pages was serving the Vite source `index.html` directly, including `/src/main.tsx`, instead of a compiled production build. A proper Vite → GitHub Pages build/deploy workflow was added.
+
+The release rule is now: do not treat HTTP 200 or a green deployment badge as proof the app works. Confirm meaningful application content renders, compiled assets load, and mobile controls remain usable. The latest checked Pages workflow on 15 September 2026 completed successfully.
+
+Live test: <https://joshualparris.github.io/UpskillApp/>
